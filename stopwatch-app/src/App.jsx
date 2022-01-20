@@ -1,46 +1,39 @@
 import React, {useEffect, useState} from 'react';
 import './App.css';
+import { interval, Subject } from "rxjs";
+import { takeUntil } from "rxjs/operators";
 import Button from './components/Button/Button';
-import UnitTime from './components/UnitTime';
+import DisplayComponent from './components/DisplayComponent';
 
 const App = () => {
-    const [time, setTime] = useState(0)
-    const [timerStart, setTimerStart] = useState(false)
+    const [time, setTime] = useState(0);
+    const [watchOn, setWatchOn] = useState(false);
 
     useEffect(() => {
-        let interval = null;
+        const unsubscribe = new Subject();
 
-        if(timerStart) {
-            interval = setInterval(() => {
-                setTime(prevTime => prevTime + 10)
-            }, 10)
-        } else {
-            clearInterval(interval)
-        }
-
-        return () => clearInterval(interval)
-
-    }, [timerStart])
-
+        interval(10)
+            .pipe(takeUntil(unsubscribe))
+            .subscribe(() => {
+              if (watchOn) {
+                setTime(val => val + 1);
+              }
+            });
+        return () => {
+          unsubscribe.next();
+        };
+      }, [watchOn]);
+    
     return ( 
         <div className="stopwatch">
             <div>
-                <UnitTime time={time} />
+                <DisplayComponent time={time} />
             </div>
             <div>
-                {!timerStart && time === 0 && (
-                    <Button className='btn btn-start' onClick={() => setTimerStart(true)} text="Start"/>
-                )}
-                 {timerStart && (
-                    <Button className='btn btn-stop' onClick={() => setTimerStart(false)} text="Stop"/>
-                )}
-                {!timerStart && time !== 0 && (
-                    <Button className='btn btn-wait' onDoubleClick={() => setTimerStart(true)} text="Wait"/>
-
-                )}
-                {!timerStart && time > 0 && (
-                    <Button className='btn btn-reset' onClick={() => setTime(0)} text="Reset"/>
-                )}
+                <Button onClick={() => setWatchOn(prevState => !prevState)} className='btn btn-start' text="Start"/>
+                {time !== 0 && <Button onClick={() => setWatchOn(false)} className='btn btn-stop'  text="Stop"/>}
+                <Button onClick={() => setWatchOn(prevState => !prevState)} className='btn btn-wait' text="Wait"/>
+                <Button onClick={() => (setWatchOn(false), setTime(0))} className='btn btn-reset' text="Reset"/>
             </div>
         </div>
     );
